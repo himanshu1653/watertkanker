@@ -11,12 +11,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const truckIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  className: 'hue-rotate-180',
-});
+const createCustomIcon = (type: 'request' | 'truck', label: string) => {
+  const color = type === 'truck' ? '#00A3FF' : '#FF4B4B';
+  return L.divIcon({
+    className: 'custom-map-marker',
+    html: `
+      <div class="relative flex items-center justify-center">
+        <div class="absolute w-12 h-12 bg-[${color}]/20 rounded-full animate-ping"></div>
+        <div class="relative w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-[${color}]">
+          <div class="w-2.5 h-2.5 rounded-full bg-[${color}]"></div>
+        </div>
+        <div class="absolute top-10 whitespace-nowrap bg-white/90 backdrop-blur-sm border border-border px-2 py-0.5 rounded text-[10px] font-bold shadow-sm">
+          ${label}
+        </div>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+};
 
 interface MapViewProps {
   markers?: { position: Location; label: string; type?: 'request' | 'truck' }[];
@@ -34,8 +47,12 @@ const MapView: React.FC<MapViewProps> = ({ markers = [], route, center = CITY_CE
     if (!mapRef.current || mapInstance.current) return;
 
     const map = L.map(mapRef.current).setView([center.lat, center.lng], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
+    
+    // Switch to Google Maps Street Tiles
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '&copy; Google Maps',
     }).addTo(map);
 
     if (onMapClick) {
@@ -64,8 +81,8 @@ const MapView: React.FC<MapViewProps> = ({ markers = [], route, center = CITY_CE
 
     // Add markers
     markers.forEach((m) => {
-      const icon = m.type === 'truck' ? truckIcon : new L.Icon.Default();
-      L.marker([m.position.lat, m.position.lng], { icon }).addTo(map).bindPopup(m.label);
+      const icon = createCustomIcon(m.type || 'request', m.label);
+      L.marker([m.position.lat, m.position.lng], { icon }).addTo(map);
     });
 
     // Add route

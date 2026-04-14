@@ -16,12 +16,14 @@ interface Notification {
 
 interface AppState {
   currentUser: User | null;
+  users: User[];
   requests: WaterRequest[];
   bids: Bid[];
   routes: DeliveryRoute[];
   notifications: Notification[];
   counterOffers: CounterOffer[];
-  login: (role: UserRole, userId?: string) => void;
+  login: (email: string, password: string, role: UserRole) => boolean;
+  signup: (userData: Omit<User, 'id'>) => boolean;
   logout: () => void;
   addRequest: (req: Omit<WaterRequest, 'id' | 'createdAt' | 'status'>) => void;
   addBid: (bid: Omit<Bid, 'id' | 'createdAt' | 'status'>) => void;
@@ -43,6 +45,7 @@ export const useApp = () => {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>(mockUsers);
   const [requests, setRequests] = useState<WaterRequest[]>(mockRequests);
   const [bids, setBids] = useState<Bid[]>(mockBids);
   const [routes] = useState<DeliveryRoute[]>(mockRoutes);
@@ -51,12 +54,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: 'co1', requestId: 'r1', vendorId: 'v1', vendorName: 'AquaFlow Suppliers', counterPrice: 1300, message: 'I can deliver premium quality water. ₹1300 is fair for 5000L.', status: 'pending', createdAt: '2026-04-14T08:30:00Z' },
   ]);
 
-  const login = useCallback((role: UserRole, userId?: string) => {
-    const user = userId
-      ? mockUsers.find(u => u.id === userId)
-      : mockUsers.find(u => u.role === role);
-    if (user) setCurrentUser(user);
-  }, []);
+  const login = useCallback((email: string, password: string, role: UserRole) => {
+    const user = users.find(
+      u => u.email.toLowerCase() === email.toLowerCase() && 
+           u.password === password && 
+           u.role === role
+    );
+    if (user) {
+      setCurrentUser(user);
+      return true;
+    }
+    return false;
+  }, [users]);
+
+  const signup = useCallback((userData: Omit<User, 'id'>) => {
+    const exists = users.some(u => u.email.toLowerCase() === userData.email.toLowerCase());
+    if (exists) return false;
+
+    const newUser: User = {
+      ...userData,
+      id: `user_${Date.now()}`,
+    };
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    return true;
+  }, [users]);
 
   const logout = useCallback(() => setCurrentUser(null), []);
 
@@ -183,8 +205,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      currentUser, requests, bids, routes, notifications, counterOffers,
-      login, logout, addRequest, addBid, acceptBid, confirmPayment, addNotification, markNotificationRead,
+      currentUser, users, requests, bids, routes, notifications, counterOffers,
+      login, signup, logout, addRequest, addBid, acceptBid, confirmPayment, addNotification, markNotificationRead,
       sendCounterOffer, respondToCounterOffer,
     }}>
       {children}

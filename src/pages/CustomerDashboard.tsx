@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Droplets, Clock, MapPin, ChevronRight, IndianRupee, MessageSquare, Check, X, Zap } from 'lucide-react';
+import { Plus, Droplets, Clock, MapPin, ChevronRight, IndianRupee, MessageSquare, Check, X, Zap, Truck, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
@@ -8,7 +8,7 @@ import DeliveryTracker from '@/components/DeliveryTracker';
 import PaymentQR from '@/components/PaymentQR';
 
 const CustomerDashboard: React.FC = () => {
-  const { currentUser, requests, bids, routes, acceptBid, addRequest, counterOffers, respondToCounterOffer, confirmPayment } = useApp();
+  const { currentUser, users, requests, bids, routes, acceptBid, addRequest, counterOffers, respondToCounterOffer, confirmPayment } = useApp();
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [newQty, setNewQty] = useState('5000');
@@ -30,6 +30,13 @@ const CustomerDashboard: React.FC = () => {
   const myCounterOffers = counterOffers.filter(co =>
     co.status === 'pending' && myRequests.some(r => r.id === co.requestId)
   );
+
+  const vendors = users.filter(u => u.role === 'vendor');
+  const marketStats = [
+    { qty: '2,000L', avg: '₹450 - ₹600', trend: 'stable' },
+    { qty: '5,000L', avg: '₹1,000 - ₹1,300', trend: 'up' },
+    { qty: '10,000L', avg: '₹1,800 - ₹2,200', trend: 'down' },
+  ];
 
   const handleCreate = () => {
     addRequest({
@@ -77,6 +84,78 @@ const CustomerDashboard: React.FC = () => {
             <div className="text-2xl font-heading font-bold text-foreground">{s.value}</div>
           </motion.div>
         ))}
+      </div>
+
+      {/* Market & Vendor Insights */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6 border-b-4 border-primary">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading font-semibold text-foreground flex items-center gap-2">
+              <Truck className="w-5 h-5 text-primary" /> Available Vendors
+            </h3>
+            <span className="text-xs font-bold px-2 py-1 bg-green-500/10 text-green-600 rounded-full flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Live
+            </span>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="p-4 rounded-2xl bg-secondary/50 border border-border">
+              <div className="text-3xl font-heading font-bold text-foreground">{vendors.length}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Total Vendors</div>
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Active Tankers:</span>
+                <span className="font-bold text-foreground">{vendors.length * 2 + 3}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Response Rate:</span>
+                <span className="font-bold text-success">98%</span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex -space-x-2">
+            {vendors.slice(0, 5).map((v, i) => (
+              <div key={i} title={v.name} className="w-8 h-8 rounded-full border-2 border-white bg-secondary flex items-center justify-center text-[10px] font-bold text-primary shadow-sm uppercase">
+                {v.name.charAt(0)}
+              </div>
+            ))}
+            {vendors.length > 5 && (
+              <div className="w-8 h-8 rounded-full border-2 border-white bg-primary text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                +{vendors.length - 5}
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-6 border-b-4 border-accent">
+          <h3 className="font-heading font-semibold text-foreground flex items-center gap-2 mb-4">
+            <TrendingUp className="w-5 h-5 text-accent" /> Market Price Index
+          </h3>
+          <div className="space-y-3">
+            {marketStats.map((stat, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-secondary/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                    <Droplets className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-foreground">{stat.qty}</div>
+                    <div className="text-[10px] text-muted-foreground">Avg. Market Rate</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-accent">{stat.avg}</div>
+                  <div className={`text-[10px] flex items-center justify-end gap-1 font-bold ${
+                    stat.trend === 'up' ? 'text-destructive' : stat.trend === 'down' ? 'text-success' : 'text-primary'
+                  }`}>
+                    {stat.trend === 'up' ? <TrendingUp className="w-2.5 h-2.5" /> : stat.trend === 'down' ? <TrendingDown className="w-2.5 h-2.5" /> : null}
+                    {stat.trend.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
 
       {/* Payment QR Modal */}

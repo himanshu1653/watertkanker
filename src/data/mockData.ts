@@ -1,13 +1,13 @@
 import { User, WaterRequest, Bid, DeliveryRoute, Location } from './types';
 
 export const mockUsers: User[] = [
-  { id: 'c1', name: 'Rajesh Kumar', email: 'rajesh@example.com', role: 'customer', phone: '+91 98765 43210' },
-  { id: 'c2', name: 'Priya Sharma', email: 'priya@example.com', role: 'customer', phone: '+91 98765 43211' },
-  { id: 'c3', name: 'Amit Patel', email: 'amit@example.com', role: 'customer', phone: '+91 98765 43212' },
-  { id: 'v1', name: 'AquaFlow Suppliers', email: 'aquaflow@example.com', role: 'vendor', phone: '+91 98765 43220' },
-  { id: 'v2', name: 'BlueWave Tankers', email: 'bluewave@example.com', role: 'vendor', phone: '+91 98765 43221' },
-  { id: 'v3', name: 'PureDrops Water', email: 'puredrops@example.com', role: 'vendor', phone: '+91 98765 43222' },
-  { id: 'a1', name: 'Admin User', email: 'admin@aquabid.com', role: 'admin' },
+  { id: 'c1', name: 'Rajesh Kumar', email: 'rajesh@example.com', password: 'password123', role: 'customer', phone: '+91 98765 43210' },
+  { id: 'c2', name: 'Priya Sharma', email: 'priya@example.com', password: 'password123', role: 'customer', phone: '+91 98765 43211' },
+  { id: 'c3', name: 'Amit Patel', email: 'amit@example.com', password: 'password123', role: 'customer', phone: '+91 98765 43212' },
+  { id: 'v1', name: 'AquaFlow Suppliers', email: 'aquaflow@example.com', password: 'password123', role: 'vendor', phone: '+91 98765 43220' },
+  { id: 'v2', name: 'BlueWave Tankers', email: 'bluewave@example.com', password: 'password123', role: 'vendor', phone: '+91 98765 43221' },
+  { id: 'v3', name: 'PureDrops Water', email: 'puredrops@example.com', password: 'password123', role: 'vendor', phone: '+91 98765 43222' },
+  { id: 'a1', name: 'Admin User', email: 'admin@aquabid.com', password: 'admin', role: 'admin' },
 ];
 
 export const CITY_CENTER: Location = { lat: 28.6139, lng: 77.2090, address: 'New Delhi, India' };
