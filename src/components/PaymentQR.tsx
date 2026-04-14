@@ -55,7 +55,7 @@ const PaymentQR: React.FC<PaymentQRProps> = ({ amount, urgentAmount, requestId, 
             imageSettings={{ src: '', height: 0, width: 0, excavate: false }}
           />
         </div>
-        <p className="text-sm text-muted-foreground text-center">Scan QR to pay <span className="font-bold text-foreground">₹{displayAmount.toLocaleString()}</span></p>
+        <p className="text-lg font-bold text-foreground text-center">Scan QR to pay <span className="text-2xl font-extrabold text-primary">₹{displayAmount.toLocaleString()}</span></p>
         <p className="text-xs text-muted-foreground">UPI ID: aquabid@upi</p>
       </div>
 
