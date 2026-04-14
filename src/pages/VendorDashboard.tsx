@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, Users, MessageSquare } from 'lucide-react';
+import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, Users, MessageSquare, Zap } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
@@ -91,8 +91,18 @@ const VendorDashboard: React.FC = () => {
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Droplets className="w-6 h-6 text-primary" />
                     </div>
-                    <div>
-                      <div className="font-heading font-semibold text-foreground">{req.customerName}</div>
+                     <div>
+                      <div className="font-heading font-semibold text-foreground flex items-center gap-2">
+                        {req.customerName}
+                        {req.isUrgent && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-accent text-white rounded-full">
+                            <Zap className="w-3 h-3" /> URGENT
+                          </span>
+                        )}
+                        {req.paymentStatus === 'paid' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-success/10 text-success rounded-full">PAID</span>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <MapPin className="w-3 h-3" /> {req.location.address}
                       </div>
@@ -104,10 +114,10 @@ const VendorDashboard: React.FC = () => {
                       <div className="text-xs text-muted-foreground">Quantity</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-heading font-bold text-accent flex items-center justify-center gap-1">
-                        <IndianRupee className="w-4 h-4" />{req.offeredPrice.toLocaleString()}
+                     <div className="text-lg font-heading font-bold text-accent flex items-center justify-center gap-1">
+                        <IndianRupee className="w-4 h-4" />{(req.isUrgent ? (req.urgentPrice || req.offeredPrice + 100) : req.offeredPrice).toLocaleString()}
                       </div>
-                      <div className="text-xs text-muted-foreground">Customer Budget</div>
+                      <div className="text-xs text-muted-foreground">{req.isUrgent ? 'Urgent Budget' : 'Customer Budget'}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-heading font-bold text-foreground flex items-center gap-1"><Clock className="w-4 h-4 text-accent" />{req.requiredTime}</div>

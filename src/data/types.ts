@@ -24,6 +24,9 @@ export interface WaterRequest {
   offeredPrice: number; // customer's offered price in ₹
   requiredTime: string;
   status: 'open' | 'bidding' | 'accepted' | 'in_delivery' | 'delivered';
+  isUrgent?: boolean;
+  urgentPrice?: number;
+  paymentStatus?: 'pending' | 'paid';
   createdAt: string;
   acceptedBidId?: string;
 }

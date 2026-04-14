@@ -26,6 +26,7 @@ interface AppState {
   addRequest: (req: Omit<WaterRequest, 'id' | 'createdAt' | 'status'>) => void;
   addBid: (bid: Omit<Bid, 'id' | 'createdAt' | 'status'>) => void;
   acceptBid: (bidId: string, requestId: string) => void;
+  confirmPayment: (requestId: string, isUrgent: boolean) => void;
   addNotification: (msg: string, type: Notification['type'], data?: Notification['data']) => void;
   markNotificationRead: (id: string) => void;
   sendCounterOffer: (requestId: string, vendorId: string, vendorName: string, counterPrice: number, message: string) => void;
@@ -98,6 +99,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addNotification('Bid accepted! Delivery will start soon.', 'accepted');
   }, [addNotification]);
 
+  const confirmPayment = useCallback((requestId: string, isUrgent: boolean) => {
+    setRequests(prev => prev.map(r => {
+      if (r.id !== requestId) return r;
+      const urgentPrice = r.offeredPrice + 100;
+      return {
+        ...r,
+        isUrgent,
+        urgentPrice: isUrgent ? urgentPrice : undefined,
+        paymentStatus: 'paid',
+      };
+    }));
+    const req = requests.find(r => r.id === requestId);
+    const totalAmount = isUrgent ? (req?.offeredPrice || 0) + 100 : (req?.offeredPrice || 0);
+    if (isUrgent) {
+      addNotification(
+        `⚡ Premium urgent delivery confirmed! ₹${totalAmount} paid. Your tanker will arrive within 30 minutes.`,
+        'accepted'
+      );
+    } else {
+      addNotification(`✅ Payment of ₹${totalAmount} confirmed for your water request.`, 'accepted');
+    }
+  }, [addNotification, requests]);
+
   const sendCounterOffer = useCallback((requestId: string, vendorId: string, vendorName: string, counterPrice: number, message: string) => {
     const co: CounterOffer = {
       id: `co${Date.now()}`,
@@ -160,7 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       currentUser, requests, bids, routes, notifications, counterOffers,
-      login, logout, addRequest, addBid, acceptBid, addNotification, markNotificationRead,
+      login, logout, addRequest, addBid, acceptBid, confirmPayment, addNotification, markNotificationRead,
       sendCounterOffer, respondToCounterOffer,
     }}>
       {children}
