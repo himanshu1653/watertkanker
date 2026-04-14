@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { Location } from '@/data/types';
 import { CITY_CENTER } from '@/data/mockData';
@@ -27,6 +27,13 @@ interface MapViewProps {
   onMapClick?: (lat: number, lng: number) => void;
 }
 
+const ClickHandler: React.FC<{ onClick: (lat: number, lng: number) => void }> = ({ onClick }) => {
+  useMapEvents({
+    click: (e) => onClick(e.latlng.lat, e.latlng.lng),
+  });
+  return null;
+};
+
 const MapView: React.FC<MapViewProps> = ({ markers = [], route, center = CITY_CENTER, height = '300px', onMapClick }) => {
   return (
     <div className="rounded-xl overflow-hidden border border-border" style={{ height }}>
@@ -34,17 +41,12 @@ const MapView: React.FC<MapViewProps> = ({ markers = [], route, center = CITY_CE
         center={[center.lat, center.lng]}
         zoom={12}
         style={{ height: '100%', width: '100%' }}
-        // @ts-ignore
-        whenReady={(map: any) => {
-          if (onMapClick) {
-            map.target.on('click', (e: any) => onMapClick(e.latlng.lat, e.latlng.lng));
-          }
-        }}
       >
         <TileLayer
           attribution='&copy; OpenStreetMap'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {onMapClick && <ClickHandler onClick={onMapClick} />}
         {markers.map((m, i) => (
           <Marker key={i} position={[m.position.lat, m.position.lng]} icon={m.type === 'truck' ? truckIcon : new L.Icon.Default()}>
             <Popup>{m.label}</Popup>
