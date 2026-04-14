@@ -21,10 +21,22 @@ export interface WaterRequest {
   customerName: string;
   location: Location;
   quantity: number; // liters
+  offeredPrice: number; // customer's offered price in ₹
   requiredTime: string;
   status: 'open' | 'bidding' | 'accepted' | 'in_delivery' | 'delivered';
   createdAt: string;
   acceptedBidId?: string;
+}
+
+export interface CounterOffer {
+  id: string;
+  requestId: string;
+  vendorId: string;
+  vendorName: string;
+  counterPrice: number;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
 }
 
 export interface Bid {
