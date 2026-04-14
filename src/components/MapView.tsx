@@ -51,7 +51,7 @@ const MapView: React.FC<MapViewProps> = ({ markers = [], route, center = CITY_CE
           </Marker>
         ))}
         {route && route.length > 1 && (
-          <Polyline positions={route.map(r => [r.lat, r.lng])} pathOptions={{ color: 'hsl(192, 82%, 35%)', weight: 4 }} />
+          <Polyline positions={route.map(r => [r.lat, r.lng] as [number, number])} pathOptions={{ color: 'hsl(192, 82%, 35%)', weight: 4 }} />
         )}
       </MapContainer>
     </div>
