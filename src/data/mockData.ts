@@ -16,27 +16,27 @@ export const mockRequests: WaterRequest[] = [
   {
     id: 'r1', customerId: 'c1', customerName: 'Rajesh Kumar',
     location: { lat: 28.6280, lng: 77.2190, address: 'Connaught Place, Delhi' },
-    quantity: 5000, requiredTime: '2 hours', status: 'bidding', createdAt: '2026-04-14T08:00:00Z',
+    quantity: 5000, offeredPrice: 1100, requiredTime: '2 hours', status: 'bidding', createdAt: '2026-04-14T08:00:00Z',
   },
   {
     id: 'r2', customerId: 'c2', customerName: 'Priya Sharma',
     location: { lat: 28.6353, lng: 77.2250, address: 'Karol Bagh, Delhi' },
-    quantity: 10000, requiredTime: '4 hours', status: 'bidding', createdAt: '2026-04-14T07:30:00Z',
+    quantity: 10000, offeredPrice: 2000, requiredTime: '4 hours', status: 'bidding', createdAt: '2026-04-14T07:30:00Z',
   },
   {
     id: 'r3', customerId: 'c3', customerName: 'Amit Patel',
     location: { lat: 28.6100, lng: 77.2300, address: 'India Gate, Delhi' },
-    quantity: 2000, requiredTime: '1 hour', status: 'accepted', createdAt: '2026-04-14T06:00:00Z', acceptedBidId: 'b5',
+    quantity: 2000, offeredPrice: 500, requiredTime: '1 hour', status: 'accepted', createdAt: '2026-04-14T06:00:00Z', acceptedBidId: 'b5',
   },
   {
     id: 'r4', customerId: 'c1', customerName: 'Rajesh Kumar',
     location: { lat: 28.6508, lng: 77.2340, address: 'Chandni Chowk, Delhi' },
-    quantity: 8000, requiredTime: '3 hours', status: 'in_delivery', createdAt: '2026-04-14T05:00:00Z', acceptedBidId: 'b7',
+    quantity: 8000, offeredPrice: 1800, requiredTime: '3 hours', status: 'in_delivery', createdAt: '2026-04-14T05:00:00Z', acceptedBidId: 'b7',
   },
   {
     id: 'r5', customerId: 'c2', customerName: 'Priya Sharma',
     location: { lat: 28.5921, lng: 77.2195, address: 'Lodhi Garden, Delhi' },
-    quantity: 3000, requiredTime: '2 hours', status: 'open', createdAt: '2026-04-14T09:00:00Z',
+    quantity: 3000, offeredPrice: 700, requiredTime: '2 hours', status: 'open', createdAt: '2026-04-14T09:00:00Z',
   },
 ];
 

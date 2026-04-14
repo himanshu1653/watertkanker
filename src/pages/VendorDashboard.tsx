@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, Users } from 'lucide-react';
+import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, Users, MessageSquare } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
 import DeliveryTracker from '@/components/DeliveryTracker';
 
 const VendorDashboard: React.FC = () => {
-  const { currentUser, requests, bids, routes, addBid } = useApp();
+  const { currentUser, requests, bids, routes, addBid, sendCounterOffer } = useApp();
   const [selectedReq, setSelectedReq] = useState<string | null>(null);
   const [bidPrice, setBidPrice] = useState('');
   const [bidEta, setBidEta] = useState('45');
   const [tab, setTab] = useState<'requests' | 'mybids' | 'deliveries'>('requests');
+
+  // Counter offer state
+  const [bargainReq, setBargainReq] = useState<string | null>(null);
+  const [counterPrice, setCounterPrice] = useState('');
+  const [counterMsg, setCounterMsg] = useState('');
 
   const openRequests = requests.filter(r => r.status === 'open' || r.status === 'bidding');
   const myBids = bids.filter(b => b.vendorId === currentUser?.id);
@@ -29,6 +34,14 @@ const VendorDashboard: React.FC = () => {
     });
     setBidPrice('');
     setSelectedReq(null);
+  };
+
+  const handleSendCounterOffer = (requestId: string) => {
+    if (!counterPrice || !counterMsg) return;
+    sendCounterOffer(requestId, currentUser!.id, currentUser!.name, parseInt(counterPrice), counterMsg);
+    setCounterPrice('');
+    setCounterMsg('');
+    setBargainReq(null);
   };
 
   const tabs = [
@@ -68,7 +81,7 @@ const VendorDashboard: React.FC = () => {
       {tab === 'requests' && (
         <div className="space-y-4">
           <MapView height="250px"
-            markers={openRequests.map(r => ({ position: r.location, label: `${r.quantity}L - ${r.location.address}`, type: 'request' }))}
+            markers={openRequests.map(r => ({ position: r.location, label: `${r.quantity}L - ₹${r.offeredPrice}`, type: 'request' }))}
           />
           <div className="grid gap-3">
             {openRequests.map(req => (
@@ -91,22 +104,36 @@ const VendorDashboard: React.FC = () => {
                       <div className="text-xs text-muted-foreground">Quantity</div>
                     </div>
                     <div className="text-center">
+                      <div className="text-lg font-heading font-bold text-accent flex items-center justify-center gap-1">
+                        <IndianRupee className="w-4 h-4" />{req.offeredPrice.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Customer Budget</div>
+                    </div>
+                    <div className="text-center">
                       <div className="text-lg font-heading font-bold text-foreground flex items-center gap-1"><Clock className="w-4 h-4 text-accent" />{req.requiredTime}</div>
                       <div className="text-xs text-muted-foreground">Deadline</div>
                     </div>
-                    <motion.button whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedReq(selectedReq === req.id ? null : req.id)}
-                      className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
-                      Place Bid
-                    </motion.button>
+                    <div className="flex flex-col gap-1">
+                      <motion.button whileTap={{ scale: 0.95 }}
+                        onClick={() => { setSelectedReq(selectedReq === req.id ? null : req.id); setBargainReq(null); }}
+                        className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
+                        Place Bid
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.95 }}
+                        onClick={() => { setBargainReq(bargainReq === req.id ? null : req.id); setSelectedReq(null); setCounterPrice(String(Math.round(req.offeredPrice * 1.2))); }}
+                        className="px-4 py-2 rounded-lg bg-accent/10 text-accent text-sm font-semibold flex items-center gap-1">
+                        <MessageSquare className="w-3.5 h-3.5" /> Bargain
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Bid form */}
                 {selectedReq === req.id && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 pt-4 border-t border-border flex flex-col md:flex-row gap-3">
                     <div className="flex-1">
                       <label className="text-sm font-medium text-foreground block mb-1">Your Price (₹)</label>
-                      <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} placeholder="e.g. 1200" className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground" />
+                      <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} placeholder={`Customer budget: ₹${req.offeredPrice}`} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground" />
                     </div>
                     <div className="flex-1">
                       <label className="text-sm font-medium text-foreground block mb-1">ETA (minutes)</label>
@@ -114,8 +141,35 @@ const VendorDashboard: React.FC = () => {
                     </div>
                     <motion.button whileTap={{ scale: 0.95 }} onClick={() => handlePlaceBid(req.id)}
                       className="self-end px-6 py-2.5 rounded-lg gradient-primary text-primary-foreground font-semibold text-sm flex items-center gap-2">
-                      <Send className="w-4 h-4" /> Submit
+                      <Send className="w-4 h-4" /> Submit Bid
                     </motion.button>
+                  </motion.div>
+                )}
+
+                {/* Bargain / Counter Offer form */}
+                {bargainReq === req.id && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 pt-4 border-t border-accent/30 space-y-3">
+                    <div className="flex items-center gap-2 text-accent text-sm font-semibold">
+                      <MessageSquare className="w-4 h-4" /> Send Counter Offer to {req.customerName}
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-foreground block mb-1">Your Counter Price (₹)</label>
+                        <input type="number" value={counterPrice} onChange={e => setCounterPrice(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-lg border border-accent/30 bg-background text-foreground" />
+                        <p className="text-xs text-muted-foreground mt-1">Customer offered ₹{req.offeredPrice}</p>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-foreground block mb-1">Message</label>
+                        <input value={counterMsg} onChange={e => setCounterMsg(e.target.value)}
+                          placeholder="Explain why your price is fair..."
+                          className="w-full px-4 py-2.5 rounded-lg border border-accent/30 bg-background text-foreground" />
+                      </div>
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleSendCounterOffer(req.id)}
+                        className="self-end px-6 py-2.5 rounded-lg bg-accent text-white font-semibold text-sm flex items-center gap-2">
+                        <Send className="w-4 h-4" /> Send Offer
+                      </motion.button>
+                    </div>
                   </motion.div>
                 )}
               </motion.div>
