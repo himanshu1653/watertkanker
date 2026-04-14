@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Droplets, Clock, MapPin, ChevronRight, IndianRupee, MessageSquare, Check, X } from 'lucide-react';
+import { Plus, Droplets, Clock, MapPin, ChevronRight, IndianRupee, MessageSquare, Check, X, Zap } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
 import DeliveryTracker from '@/components/DeliveryTracker';
+import PaymentQR from '@/components/PaymentQR';
 
 const CustomerDashboard: React.FC = () => {
-  const { currentUser, requests, bids, routes, acceptBid, addRequest, counterOffers, respondToCounterOffer } = useApp();
+  const { currentUser, requests, bids, routes, acceptBid, addRequest, counterOffers, respondToCounterOffer, confirmPayment } = useApp();
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [newQty, setNewQty] = useState('5000');
@@ -16,6 +17,10 @@ const CustomerDashboard: React.FC = () => {
   const [newAddress, setNewAddress] = useState('');
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.209);
+
+  // Payment state
+  const [payingRequest, setPayingRequest] = useState<string | null>(null);
+  const [isUrgent, setIsUrgent] = useState(false);
 
   const myRequests = requests.filter(r => r.customerId === currentUser?.id);
   const viewingRequest = selectedRequest ? requests.find(r => r.id === selectedRequest) : null;
@@ -41,8 +46,21 @@ const CustomerDashboard: React.FC = () => {
   };
 
   const handleAcceptBid = (bidId: string) => {
-    if (selectedRequest) acceptBid(bidId, selectedRequest);
+    if (selectedRequest) {
+      acceptBid(bidId, selectedRequest);
+      setPayingRequest(selectedRequest);
+      setIsUrgent(false);
+    }
   };
+
+  const handleConfirmPayment = () => {
+    if (payingRequest) {
+      confirmPayment(payingRequest, isUrgent);
+      setPayingRequest(null);
+    }
+  };
+
+  const payingReq = payingRequest ? requests.find(r => r.id === payingRequest) : null;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
@@ -60,6 +78,30 @@ const CustomerDashboard: React.FC = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* Payment QR Modal */}
+      <AnimatePresence>
+        {payingRequest && payingReq && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={(e) => e.target === e.currentTarget && setPayingRequest(null)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-md">
+              <PaymentQR
+                amount={payingReq.offeredPrice}
+                urgentAmount={payingReq.offeredPrice + 100}
+                requestId={payingReq.id}
+                isUrgent={isUrgent}
+                onSelectUrgent={setIsUrgent}
+                onConfirmPayment={handleConfirmPayment}
+              />
+              <button onClick={() => setPayingRequest(null)} className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Counter Offers Received */}
       {myCounterOffers.length > 0 && (
@@ -153,16 +195,26 @@ const CustomerDashboard: React.FC = () => {
                 <Droplets className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <div className="font-heading font-semibold text-foreground">{req.quantity.toLocaleString()}L</div>
+                <div className="font-heading font-semibold text-foreground flex items-center gap-2">
+                  {req.quantity.toLocaleString()}L
+                  {req.isUrgent && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-accent text-white rounded-full">
+                      <Zap className="w-3 h-3" /> URGENT
+                    </span>
+                  )}
+                  {req.paymentStatus === 'paid' && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-success/10 text-success rounded-full">PAID</span>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground">{req.location.address}</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right mr-2">
                 <div className="text-sm font-heading font-bold text-accent flex items-center gap-1">
-                  <IndianRupee className="w-3 h-3" />{req.offeredPrice.toLocaleString()}
+                  <IndianRupee className="w-3 h-3" />{(req.isUrgent ? (req.urgentPrice || req.offeredPrice + 100) : req.offeredPrice).toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground">budget</div>
+                <div className="text-xs text-muted-foreground">{req.isUrgent ? 'urgent price' : 'budget'}</div>
               </div>
               <span className={`text-xs font-medium px-3 py-1 rounded-full ${
                 req.status === 'open' ? 'bg-warning/10 text-warning' :
@@ -192,6 +244,17 @@ const CustomerDashboard: React.FC = () => {
               <BidCard key={bid.id} bid={bid} onAccept={handleAcceptBid} showActions={viewingRequest.status === 'bidding'} />
             ))}
           </div>
+
+          {/* Show payment button for accepted requests without payment */}
+          {viewingRequest.status === 'accepted' && viewingRequest.paymentStatus !== 'paid' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => { setPayingRequest(viewingRequest.id); setIsUrgent(false); }}
+                className="px-8 py-3 rounded-xl gradient-primary text-primary-foreground font-semibold flex items-center gap-2">
+                <IndianRupee className="w-5 h-5" /> Proceed to Payment
+              </motion.button>
+            </motion.div>
+          )}
         </motion.div>
       )}
 
