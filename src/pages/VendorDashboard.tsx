@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, Users, MessageSquare, Zap, CheckCircle2, History } from 'lucide-react';
+import { Droplets, MapPin, Clock, IndianRupee, Send, Truck, MessageSquare, Zap, CheckCircle2, History, ArrowUpDown } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
@@ -13,6 +13,8 @@ const VendorDashboard: React.FC = () => {
   const [bidPrice, setBidPrice] = useState('');
   const [bidEta, setBidEta] = useState('45');
   const [tab, setTab] = useState<'requests' | 'mybids' | 'deliveries'>('requests');
+  const [requestSort, setRequestSort] = useState<'latest' | 'highest_price' | 'largest_qty'>('latest');
+  const [urgentOnly, setUrgentOnly] = useState(false);
 
   // Counter offer state
   const [bargainReq, setBargainReq] = useState<string | null>(null);
@@ -20,14 +22,26 @@ const VendorDashboard: React.FC = () => {
   const [counterMsg, setCounterMsg] = useState('');
 
   const openRequests = requests.filter(r => r.status === 'open' || r.status === 'bidding');
+  const visibleRequests = openRequests
+    .filter(r => !urgentOnly || r.isUrgent)
+    .sort((a, b) => {
+      if (requestSort === 'highest_price') return b.offeredPrice - a.offeredPrice;
+      if (requestSort === 'largest_qty') return b.quantity - a.quantity;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   const myBids = bids.filter(b => b.vendorId === currentUser?.id);
   const myAccepted = myBids.filter(b => b.status === 'accepted');
   const myRoutes = routes.filter(r => r.vendorId === currentUser?.id);
 
   const handlePlaceBid = (requestId: string, overridePrice?: number) => {
     const price = overridePrice || parseInt(bidPrice);
-    if (!price) {
-      toast.error('Please enter a valid price');
+    const eta = parseInt(bidEta);
+    if (!price || price <= 0) {
+      toast.error('Please enter a valid price above ₹0');
+      return;
+    }
+    if (!eta || eta < 10 || eta > 240) {
+      toast.error('ETA should be between 10 and 240 minutes');
       return;
     }
     
@@ -36,7 +50,7 @@ const VendorDashboard: React.FC = () => {
       vendorId: currentUser!.id,
       vendorName: currentUser!.name,
       price: price,
-      eta: parseInt(bidEta),
+      eta,
     });
     
     toast.success(overridePrice ? 'Order Accepted!' : 'Bid Submitted Successfully', {
@@ -48,15 +62,20 @@ const VendorDashboard: React.FC = () => {
   };
 
   const handleSendCounterOffer = (requestId: string) => {
-    if (!counterPrice || !counterMsg) {
-      toast.error('Please fill in both price and message');
+    const parsedCounterPrice = parseInt(counterPrice);
+    if (!parsedCounterPrice || parsedCounterPrice <= 0) {
+      toast.error('Counter price should be above ₹0');
+      return;
+    }
+    if (!counterMsg.trim()) {
+      toast.error('Please add a short negotiation message');
       return;
     }
     
-    sendCounterOffer(requestId, currentUser!.id, currentUser!.name, parseInt(counterPrice), counterMsg);
+    sendCounterOffer(requestId, currentUser!.id, currentUser!.name, parsedCounterPrice, counterMsg);
     
     toast.info('Counter Offer Sent', {
-      description: `Customer will be notified of your price: ₹${parseInt(counterPrice).toLocaleString()}`
+      description: `Customer will be notified of your price: ₹${parsedCounterPrice.toLocaleString()}`
     });
     
     setCounterPrice('');
@@ -100,11 +119,33 @@ const VendorDashboard: React.FC = () => {
       {/* Open Requests */}
       {tab === 'requests' && (
         <div className="space-y-4">
+          <div className="glass-card p-3 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ArrowUpDown className="w-4 h-4" /> Sort Requests
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={requestSort}
+                onChange={e => setRequestSort(e.target.value as typeof requestSort)}
+                className="px-3 py-2 rounded-lg border border-input bg-background text-sm"
+              >
+                <option value="latest">Latest First</option>
+                <option value="highest_price">Highest Budget</option>
+                <option value="largest_qty">Largest Quantity</option>
+              </select>
+              <button
+                onClick={() => setUrgentOnly(v => !v)}
+                className={`px-3 py-2 rounded-lg text-sm border ${urgentOnly ? 'border-destructive text-destructive bg-destructive/10' : 'border-input text-muted-foreground'}`}
+              >
+                Urgent Only
+              </button>
+            </div>
+          </div>
           <MapView height="250px"
-            markers={openRequests.map(r => ({ position: r.location, label: `${r.quantity}L - ₹${r.offeredPrice}`, type: 'request' }))}
+            markers={visibleRequests.map(r => ({ position: r.location, label: `${r.quantity}L - ₹${r.offeredPrice}`, type: 'request' }))}
           />
           <div className="grid gap-4">
-            {openRequests.map(req => (
+            {visibleRequests.map(req => (
               <motion.div key={req.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6 overflow-hidden relative">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-4">
@@ -229,7 +270,7 @@ const VendorDashboard: React.FC = () => {
                 </AnimatePresence>
               </motion.div>
             ))}
-            {openRequests.length === 0 && <div className="p-12 text-center text-muted-foreground border-2 border-dashed border-border rounded-3xl">No open water requests in your area.</div>}
+            {visibleRequests.length === 0 && <div className="p-12 text-center text-muted-foreground border-2 border-dashed border-border rounded-3xl">No requests match your current filters.</div>}
           </div>
         </div>
       )}

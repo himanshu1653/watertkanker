@@ -6,6 +6,7 @@ import BidCard from '@/components/BidCard';
 import MapView from '@/components/MapView';
 import DeliveryTracker from '@/components/DeliveryTracker';
 import PaymentQR from '@/components/PaymentQR';
+import { toast } from 'sonner';
 
 const CustomerDashboard: React.FC = () => {
   const { currentUser, users, requests, bids, routes, acceptBid, addRequest, counterOffers, respondToCounterOffer, confirmPayment } = useApp();
@@ -21,8 +22,17 @@ const CustomerDashboard: React.FC = () => {
   // Payment state
   const [payingRequest, setPayingRequest] = useState<string | null>(null);
   const [isUrgent, setIsUrgent] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'bidding' | 'accepted' | 'in_delivery' | 'delivered'>('all');
+  const [requestSort, setRequestSort] = useState<'latest' | 'highest_budget' | 'largest_qty'>('latest');
 
   const myRequests = requests.filter(r => r.customerId === currentUser?.id);
+  const filteredRequests = myRequests
+    .filter(r => statusFilter === 'all' || r.status === statusFilter)
+    .sort((a, b) => {
+      if (requestSort === 'highest_budget') return b.offeredPrice - a.offeredPrice;
+      if (requestSort === 'largest_qty') return b.quantity - a.quantity;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   const viewingRequest = selectedRequest ? requests.find(r => r.id === selectedRequest) : null;
   const requestBids = selectedRequest ? bids.filter(b => b.requestId === selectedRequest) : [];
   const activeDelivery = routes.find(rt => rt.stops.some(s => myRequests.some(r => r.id === s.requestId)));
@@ -39,14 +49,30 @@ const CustomerDashboard: React.FC = () => {
   ];
 
   const handleCreate = () => {
+    const quantity = parseInt(newQty);
+    const price = parseInt(newPrice);
+    if (!quantity || quantity < 500) {
+      toast.error('Minimum quantity is 500 liters');
+      return;
+    }
+    if (!price || price < 100) {
+      toast.error('Please enter a valid budget above ₹100');
+      return;
+    }
+    if (!newAddress.trim()) {
+      toast.error('Please enter a delivery address');
+      return;
+    }
+
     addRequest({
       customerId: currentUser!.id,
       customerName: currentUser!.name,
       location: { lat: mapLat, lng: mapLng, address: newAddress || 'Selected Location, Delhi' },
-      quantity: parseInt(newQty),
-      offeredPrice: parseInt(newPrice),
+      quantity,
+      offeredPrice: price,
       requiredTime: newTime,
     });
+    toast.success('Request posted successfully');
     setShowCreate(false);
     setNewAddress('');
     setNewPrice('1000');
@@ -238,7 +264,7 @@ const CustomerDashboard: React.FC = () => {
               <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground" />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1 flex items-center gap-1">
+              <label className="text-sm font-medium text-foreground mb-1 flex items-center gap-1">
                 <IndianRupee className="w-3.5 h-3.5" /> Your Budget (₹)
               </label>
               <input type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="e.g. 1000"
@@ -264,8 +290,34 @@ const CustomerDashboard: React.FC = () => {
       )}
 
       {/* Request list */}
+      <div className="glass-card p-3 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+        <div className="text-sm text-muted-foreground">Filter & Sort My Requests</div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="px-3 py-2 rounded-lg border border-input bg-background text-sm"
+          >
+            <option value="all">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="bidding">Bidding</option>
+            <option value="accepted">Accepted</option>
+            <option value="in_delivery">In Delivery</option>
+            <option value="delivered">Delivered</option>
+          </select>
+          <select
+            value={requestSort}
+            onChange={e => setRequestSort(e.target.value as typeof requestSort)}
+            className="px-3 py-2 rounded-lg border border-input bg-background text-sm"
+          >
+            <option value="latest">Latest First</option>
+            <option value="highest_budget">Highest Budget</option>
+            <option value="largest_qty">Largest Quantity</option>
+          </select>
+        </div>
+      </div>
       <div className="grid gap-3">
-        {myRequests.map(req => (
+        {filteredRequests.map(req => (
           <motion.button key={req.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             onClick={() => setSelectedRequest(selectedRequest === req.id ? null : req.id)}
             className={`glass-card p-4 flex items-center justify-between text-left w-full transition-all ${selectedRequest === req.id ? 'ring-2 ring-primary' : ''}`}>
@@ -308,6 +360,11 @@ const CustomerDashboard: React.FC = () => {
             </div>
           </motion.button>
         ))}
+        {filteredRequests.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+            No requests match the selected status filter.
+          </div>
+        )}
       </div>
 
       {/* Bid details for selected request */}

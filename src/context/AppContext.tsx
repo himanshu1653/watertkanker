@@ -36,6 +36,28 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
+const APP_STATE_STORAGE_KEY = 'watertkanker_app_state_v1';
+
+interface PersistedAppState {
+  currentUser: User | null;
+  users: User[];
+  requests: WaterRequest[];
+  bids: Bid[];
+  routes: DeliveryRoute[];
+  notifications: Notification[];
+  counterOffers: CounterOffer[];
+}
+
+const loadPersistedState = (): PersistedAppState | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(APP_STATE_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedAppState;
+  } catch {
+    return null;
+  }
+};
 
 export const useApp = () => {
   const ctx = useContext(AppContext);
@@ -44,13 +66,14 @@ export const useApp = () => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [requests, setRequests] = useState<WaterRequest[]>(mockRequests);
-  const [bids, setBids] = useState<Bid[]>(mockBids);
-  const [routes] = useState<DeliveryRoute[]>(mockRoutes);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [counterOffers, setCounterOffers] = useState<CounterOffer[]>([
+  const persisted = loadPersistedState();
+  const [currentUser, setCurrentUser] = useState<User | null>(persisted?.currentUser ?? null);
+  const [users, setUsers] = useState<User[]>(persisted?.users ?? mockUsers);
+  const [requests, setRequests] = useState<WaterRequest[]>(persisted?.requests ?? mockRequests);
+  const [bids, setBids] = useState<Bid[]>(persisted?.bids ?? mockBids);
+  const [routes] = useState<DeliveryRoute[]>(persisted?.routes ?? mockRoutes);
+  const [notifications, setNotifications] = useState<Notification[]>(persisted?.notifications ?? []);
+  const [counterOffers, setCounterOffers] = useState<CounterOffer[]>(persisted?.counterOffers ?? [
     { id: 'co1', requestId: 'r1', vendorId: 'v1', vendorName: 'AquaFlow Suppliers', counterPrice: 1300, message: 'I can deliver premium quality water. ₹1300 is fair for 5000L.', status: 'pending', createdAt: '2026-04-14T08:30:00Z' },
   ]);
 
@@ -94,6 +117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const addRequest = useCallback((req: Omit<WaterRequest, 'id' | 'createdAt' | 'status'>) => {
+    if (req.quantity <= 0 || req.offeredPrice <= 0 || !req.requiredTime.trim()) return;
     const newReq: WaterRequest = {
       ...req,
       id: `r${Date.now()}`,
@@ -105,6 +129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addNotification]);
 
   const addBid = useCallback((bid: Omit<Bid, 'id' | 'createdAt' | 'status'>) => {
+    if (bid.price <= 0 || bid.eta <= 0) return;
     const newBid: Bid = { ...bid, id: `b${Date.now()}`, status: 'pending', createdAt: new Date().toISOString() };
     setBids(prev => [...prev, newBid]);
     setRequests(prev => prev.map(r => r.id === bid.requestId && r.status === 'open' ? { ...r, status: 'bidding' } : r));
@@ -145,6 +170,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [addNotification, requests]);
 
   const sendCounterOffer = useCallback((requestId: string, vendorId: string, vendorName: string, counterPrice: number, message: string) => {
+    if (counterPrice <= 0 || !message.trim()) return;
     const co: CounterOffer = {
       id: `co${Date.now()}`,
       requestId,
@@ -184,6 +210,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addNotification(`Counter offer from ${co?.vendorName} was rejected`, 'info');
     }
   }, [counterOffers, addBid, addNotification]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stateToPersist: PersistedAppState = {
+      currentUser,
+      users,
+      requests,
+      bids,
+      routes,
+      notifications,
+      counterOffers,
+    };
+    window.localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(stateToPersist));
+  }, [currentUser, users, requests, bids, routes, notifications, counterOffers]);
 
   // Simulate bid appearing after 10s for open requests
   useEffect(() => {
